@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamAdda</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0d0d14;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 700px;
+    margin: auto;
+    padding: 25px 15px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #888;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: #171722;
+    border: 1px solid #292938;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-top: 16px;
+    margin-bottom: 7px;
+    color: #aaa;
+    font-size: 14px;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 13px;
+    border-radius: 8px;
+    border: 1px solid #333344;
+    background: #0e0e17;
+    color: white;
+    font-size: 15px;
+}
+
+input[type="file"] {
+    padding: 10px;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.status {
+    padding: 12px;
+    border-radius: 8px;
+    background: #0e0e17;
+    color: #aaa;
+    margin-top: 15px;
+    word-break: break-word;
+}
+
+.progress {
+    width: 100%;
+    height: 8px;
+    background: #292938;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    transition: width 0.2s;
+}
+
+.stream {
+    border: 1px solid #292938;
+    background: #13131e;
+    padding: 15px;
+    border-radius: 12px;
+    margin-top: 15px;
+}
+
+.stream-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    background: #333;
+}
+
+.online {
+    background: #14532d;
+    color: #86efac;
+}
+
+.starting {
+    background: #713f12;
+    color: #fde68a;
+}
+
+.offline {
+    background: #3f3f46;
+    color: #aaa;
+}
+
+.error {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+.stop-btn {
+    background: #7f1d1d;
+    margin-top: 12px;
+}
+
+.delete-btn {
+    background: #333;
+    margin-top: 8px;
+}
+
+small {
+    color: #777;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🎬 StreamAdda</h1>
+
+    <div class="subtitle">
+        Unlimited Video Loop Live Streaming
+    </div>
+
+    <div class="card">
+
+        <label>Stream Name</label>
+
+        <input
+            id="name"
+            type="text"
+            placeholder="My Live Stream"
+        >
+
+        <label>Upload Video</label>
+
+        <input
+            id="video"
+            type="file"
+            accept="video/*"
+        >
+
+        <div id="fileInfo"></div>
+
+        <div class="progress">
+            <div
+                id="progressBar"
+                class="progress-bar"
+            ></div>
+        </div>
+
+        <label>Total Stream Duration (Minutes)</label>
+
+        <input
+            id="duration"
+            type="number"
+            min="2"
+            placeholder="Example: 60"
+        >
+
+        <small>
+            Your video will loop continuously until this duration ends.
+        </small>
+
+        <label>Platform</label>
+
+        <select id="platform">
+
+            <option value="youtube">
+                YouTube Live
+            </option>
+
+            <option value="facebook">
+                Facebook Live
+            </option>
+
+        </select>
+
+        <label>Stream Key</label>
+
+        <input
+            id="streamKey"
+            type="password"
+            placeholder="Enter your stream key"
+        >
+
+        <label>Backup RTMP (Optional)</label>
+
+        <input
+            id="backup"
+            type="text"
+            placeholder="rtmps://..."
+        >
+
+        <button
+            id="startBtn"
+            onclick="startStream()"
+        >
+            🚀 Upload & Start Stream
+        </button>
+
+        <div
+            id="status"
+            class="status"
+        >
+            Ready
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>📡 Active Streams</h2>
+
+        <div id="streams">
+            No active streams
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+let uploadedVideo = null;
+
+
+const videoInput =
+    document.getElementById("video");
+
+const progressBar =
+    document.getElementById("progressBar");
+
+const statusBox =
+    document.getElementById("status");
+
+const startBtn =
+    document.getElementById("startBtn");
+
+
+videoInput.addEventListener(
+    "change",
+    function() {
+
+        if (!this.files.length) {
+            return;
+        }
+
+        const file = this.files[0];
+
+        document.getElementById(
+            "fileInfo"
+        ).innerHTML =
+            `<small>Selected: ${file.name}</small>`;
+
+    }
+);
+
+
+function setStatus(message) {
+
+    statusBox.innerText =
+        message;
+
+}
+
+
+function uploadVideo(file) {
+
+    return new Promise(
+        function(resolve, reject) {
+
+            const formData =
+                new FormData();
+
+            formData.append(
+                "file",
+                file
+            );
+
+            const xhr =
+                new XMLHttpRequest();
+
+            xhr.open(
+                "POST",
+                "/api/upload/video"
+            );
+
+            xhr.upload.onprogress =
+                function(event) {
+
+                    if (!event.lengthComputable) {
+                        return;
+                    }
+
+                    const percent =
+                        Math.round(
+                            event.loaded /
+                            event.total *
+                            100
+                        );
+
+                    progressBar.style.width =
+                        percent + "%";
+
+                    setStatus(
+                        "Uploading video... " +
+                        percent +
+                        "%"
+                    );
+
+                };
+
+
+            xhr.onload =
+                function() {
+
+                    try {
+
+                        const data =
+                            JSON.parse(
+                                xhr.responseText
+                            );
+
+                        if (
+                            xhr.status >= 200 &&
+                            xhr.status < 300 &&
+                            data.ok
+                        ) {
+
+                            resolve(data);
+
+                        } else {
+
+                            reject(
+                                new Error(
+                                    data.detail ||
+                                    "Upload failed"
+                                )
+                            );
+
+                        }
+
+                    } catch (error) {
+
+                        reject(
+                            new Error(
+                                "Server returned invalid response"
+                            )
+                        );
+
+                    }
+
+                };
+
+
+            xhr.onerror =
+                function() {
+
+                    reject(
+                        new Error(
+                            "Network error"
+                        )
+                    );
+
+                };
+
+
+            xhr.send(
+                formData
+            );
+
+        }
+    );
+
+}
+
+
+async function startStream() {
+
+    const name =
+        document.getElementById(
+            "name"
+        ).value.trim() ||
+        "Live Stream";
+
+
+    const duration =
+        parseInt(
+            document.getElementById(
+                "duration"
+            ).value
+        );
+
+
+    const platform =
+        document.getElementById(
+            "platform"
+        ).value;
+
+
+    const streamKey =
+        document.getElementById(
+            "streamKey"
+        ).value.trim();
+
+
+    const backup =
+        document.getElementById(
+            "backup"
+        ).value.trim();
+
+
+    const file =
+        videoInput.files[0];
+
+
+    if (!file) {
+
+        alert(
+            "Please select a video"
+        );
+
+        return;
+
+    }
+
+
+    if (!duration || duration < 2) {
+
+        alert(
+            "Minimum duration is 2 minutes"
+        );
+
+        return;
+
+    }
+
+
+    if (!streamKey) {
+
+        alert(
+            "Stream key is required"
+        );
+
+        return;
+
+    }
+
+
+    startBtn.disabled =
+        true;
+
+
+    try {
+
+        setStatus(
+            "Uploading video..."
+        );
+
+
+        const upload =
+            await uploadVideo(
+                file
+            );
+
+
+        uploadedVideo =
+            upload;
+
+
+        setStatus(
+            "Starting FFmpeg stream..."
+        );
+
+
+        const response =
+            await fetch(
+                "/api/streams",
+                {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        name:
+                            name,
+
+                        total_minutes:
+                            duration,
+
+                        platform:
+                            platform,
+
+                        stream_key:
+                            streamKey,
+
+                        backup_rtmp:
+                            backup
+
+                    })
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Failed to start stream"
+            );
+
+        }
+
+
+        setStatus(
+            "Stream started successfully!"
+        );
+
+
+        videoInput.value =
+            "";
+
+        progressBar.style.width =
+            "0%";
+
+
+        await loadStreams();
+
+
+    } catch (error) {
+
+        setStatus(
+            "ERROR: " +
+            error.message
+        );
+
+    }
+
+
+    startBtn.disabled =
+        false;
+
+}
+
+
+async function loadStreams() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/streams"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        const container =
+            document.getElementById(
+                "streams"
+            );
+
+
+        const ids =
+            Object.keys(
+                data
+            );
+
+
+        if (!ids.length) {
+
+            container.innerHTML =
+                "No active streams";
+
+            return;
+
+        }
+
+
+        container.innerHTML =
+            "";
+
+
+        ids.forEach(
+            function(id) {
+
+                const stream =
+                    data[id];
+
+
+                const div =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                div.className =
+                    "stream";
+
+
+                div.innerHTML = `
+
+                    <div class="stream-title">
+                        ${escapeHtml(stream.name)}
+                    </div>
+
+                    <span class="badge ${stream.status}">
+                        ${stream.status.toUpperCase()}
+                    </span>
+
+                    <p>
+                        Video:
+                        ${escapeHtml(stream.filename)}
+                    </p>
+
+                    <p>
+                        Duration:
+                        ${stream.total_minutes}
+                        minutes
+                    </p>
+
+                    <p>
+                        Uptime:
+                        ${formatTime(stream.uptime)}
+                    </p>
+
+                    <button
+                        class="stop-btn"
+                        onclick="stopStream('${id}')"
+                    >
+                        ⏹ Stop Stream
+                    </button>
+
+                    <button
+                        class="delete-btn"
+                        onclick="deleteStream('${id}')"
+                    >
+                        🗑 Delete
+                    </button>
+
+                `;
+
+
+                container.appendChild(
+                    div
+                );
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.log(
+            error
+        );
+
+    }
+
+}
+
+
+async function stopStream(id) {
+
+    try {
+
+        await fetch(
+            `/api/streams/${id}/stop`,
+            {
+                method: "POST"
+            }
+        );
+
+
+        await loadStreams();
+
+
+    } catch (error) {
+
+        alert(
+            "Failed to stop stream"
+        );
+
+    }
+
+}
+
+
+async function deleteStream(id) {
+
+    if (
+        !confirm(
+            "Delete this stream?"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        await fetch(
+            `/api/streams/${id}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+
+        await loadStreams();
+
+
+    } catch (error) {
+
+        alert(
+            "Failed to delete stream"
+        );
+
+    }
+
+}
+
+
+function formatTime(seconds) {
+
+    seconds =
+        Math.floor(
+            seconds || 0
+        );
+
+
+    const hours =
+        Math.floor(
+            seconds /
+            3600
+        );
+
+
+    const minutes =
+        Math.floor(
+            (
+                seconds %
+                3600
+            ) /
+            60
+        );
+
+
+    const secs =
+        seconds %
+        60;
+
+
+    return (
+        hours +
+        "h " +
+        minutes +
+        "m " +
+        secs +
+        "s"
+    );
+
+}
+
+
+function escapeHtml(text) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.innerText =
+        text;
+
+
+    return div.innerHTML;
+
+}
+
+
+loadStreams();
+
+
+setInterval(
+    loadStreams,
+    5000
+);
+
+</script>
+
+</body>
+  </html>
